@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Unicode Range Selector</title>
+
+    <style>
+      body,
+      h1,
+      p {
+        margin: 0;
+        color: #002;
+      }
+      *:focus-visible {
+        outline: none;
+        box-shadow: 0 4px 0 #0399;
+      }
+      .container {
+        max-width: min(90%, 944px); /* 12*64px btn + 11*16px gap*/
+        margin: 0 auto;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        padding: 32px;
+      }
+
+      textarea {
+        height: 120px;
+        padding: 8px;
+        border: 1px solid #ccc;
+      }
+
+      button {
+        cursor: pointer;
+        background-color: transparent;
+        color: #002;
+        border: 1px solid #ccc;
+      }
+
+      button:hover,
+      button.active:hover {
+        background-color: #cdf;
+        color: #002;
+        border-color: #cdf;
+      }
+
+      button.active,
+      button.btn-lg:hover,
+      button.btn-xl {
+        background-color: #039;
+        color: #fff;
+        border-color: #039;
+      }
+
+      button.btn-lg {
+        padding: 8px 16px;
+        font-size: 12px;
+        width: fit-content;
+      }
+
+      button.btn-xl {
+        padding: 12px 24px;
+        font-size: 16px;
+      }
+
+      .toggle-wrapper {
+        display: flex;
+        gap: 16px;
+        justify-content: center;
+      }
+
+      #output {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+      }
+
+      .output-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: space-between;
+        gap: 4px;
+        width: 64px;
+        height: 64px;
+        padding: 8px;
+      }
+      .output-item {
+        font-size: 24px;
+      }
+      .output-item div {
+        font-size: 12px;
+        font-family: monospace;
+      }
+
+      #exported-range {
+        text-align: left;
+        line-height: 1.25;
+      }
+
+	  p {
+		text-align: left;
+	  }
+      a {
+        color: #039;
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Unicode Range Selector</h1>
+
+      <!-- prettier-ignore -->
+      <textarea id="unicode-input" placeholder="Enter Unicode range">
+U+000D, U+0020-007E, U+00A0-017F, U+0192, U+01FA-01FD, U+0218-021B, U+0237, U+02B9-02BA, U+02C6-02C7, U+02D8-02DD, U+0394, U+03A9, U+03BC, U+03C0, U+1E80-1E85, U+1E9E, U+1EF2-1EF3, U+2013-2014, U+2018-201A, U+201C-201E, U+2020-2022, U+2026, U+2030, U+2039-203A, U+2044, U+2070, U+2074-2079, U+20AC, U+2116-2117, U+2122, U+2126, U+212E, U+215B-215E, U+2190-2193, U+2196-2199, U+2202, U+2206, U+220F, U+2211-2212, U+221A, U+221E, U+222B, U+2248, U+2260, U+2264-2265, U+2460-2468, U+25CA-25CB, U+25CF, U+2776-277E, U+F8FF
+</textarea>
+
+      <button class="btn-xl" onclick="renderUnicode()">Render</button>
+
+      <div class="toggle-wrapper">
+        <button class="btn-lg" onclick="toggleAll(true)">All</button>
+        <button class="btn-lg" onclick="toggleAll(false)">None</button>
+      </div>
+
+      <div id="output"></div>
+
+      <div id="exported-range"></div>
+
+      <button class="btn-lg" onclick="copyRange()">Copy</button>
+
+      <p>
+        Copy your font's unicode range and view your font's glyphs at
+        <a href="https://wakamaifondue.com/beta/" target="_blank"
+          >wakamaifondue.com</a
+        >
+      </p>
+    </div>
+
+    <script>
+      let selectedCharacters = new Set();
+
+      function renderUnicode() {
+        const unicodeInput = document
+          .getElementById("unicode-input")
+          .value.trim();
+        const outputDiv = document.getElementById("output");
+        outputDiv.innerHTML = "";
+
+        const ranges = unicodeInput.split(",");
+        ranges.forEach((range) => {
+          const unicodeParts = range.trim().split("-");
+          if (unicodeParts.length === 1) {
+            const unicode = parseInt(unicodeParts[0].replace("U+", ""), 16);
+            renderCharacter(unicode, outputDiv);
+          } else {
+            const startUnicode = parseInt(
+              unicodeParts[0].replace("U+", ""),
+              16
+            );
+            const endUnicode = parseInt(unicodeParts[1].replace("U+", ""), 16);
+            for (let unicode = startUnicode; unicode <= endUnicode; unicode++) {
+              renderCharacter(unicode, outputDiv);
+            }
+          }
+        });
+      }
+
+      function renderCharacter(unicode, outputDiv) {
+        const char = String.fromCharCode(unicode);
+
+        const charButton = document.createElement("button");
+        charButton.classList.add("output-item");
+        charButton.textContent = char;
+
+        const unicodeNumberElement = document.createElement("div");
+        unicodeNumberElement.textContent = `U+${unicode
+          .toString(16)
+          .toUpperCase()
+          .padStart(4, "0")}`;
+
+        charButton.appendChild(unicodeNumberElement);
+
+        outputDiv.appendChild(charButton);
+
+        charButton.addEventListener("click", () =>
+          toggleCharacter(unicode, charButton)
+        );
+      }
+
+      function toggleCharacter(unicode, charButton) {
+        if (selectedCharacters.has(unicode)) {
+          selectedCharacters.delete(unicode);
+          charButton.classList.remove("active");
+        } else {
+          selectedCharacters.add(unicode);
+          charButton.classList.add("active");
+        }
+        updateExportedUnicode();
+      }
+
+      function updateExportedUnicode() {
+        const selectedArray = [...selectedCharacters].sort((a, b) => a - b);
+        let exportedRange = "";
+
+        for (let i = 0; i < selectedArray.length; i++) {
+          let startRange = selectedArray[i];
+          let endRange = startRange;
+
+          while (
+            i < selectedArray.length - 1 &&
+            selectedArray[i + 1] - selectedArray[i] === 1
+          ) {
+            endRange = selectedArray[i + 1];
+            i++;
+          }
+
+          if (startRange === endRange) {
+            exportedRange += `U+${startRange
+              .toString(16)
+              .toUpperCase()
+              .padStart(4, "0")}, `;
+          } else {
+            exportedRange += `U+${startRange
+              .toString(16)
+              .toUpperCase()
+              .padStart(4, "0")}-${endRange
+              .toString(16)
+              .toUpperCase()
+              .padStart(4, "0")}, `;
+          }
+        }
+
+        document.getElementById("exported-range").textContent =
+          exportedRange.slice(0, -2);
+      }
+
+      function toggleAll(on) {
+        document.querySelectorAll(".output-item").forEach((item) => {
+          const unicode = parseInt(item.textContent.codePointAt(0));
+          if (on && !selectedCharacters.has(unicode)) {
+            selectedCharacters.add(unicode);
+            item.classList.add("active");
+          } else if (!on && selectedCharacters.has(unicode)) {
+            selectedCharacters.delete(unicode);
+            item.classList.remove("active");
+          }
+        });
+        updateExportedUnicode();
+      }
+
+      function copyRange() {
+        navigator.clipboard
+          .writeText(document.getElementById("exported-range").innerText)
+          .then(() => console.log("Text copied to clipboard"))
+          .catch((error) => console.error(error));
+      }
+    </script>
+  </body>
+</html>
